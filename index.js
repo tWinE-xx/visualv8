@@ -28,10 +28,7 @@ function Run(config){
         socket.emit('onConnect', { message: `connected http://${config.host}:${config.port}` });
         setInterval(()=>{
             socket.emit('memory', { message: memorySnapshot.call() });
-            cpuSnapshot((snapshot)=>{
-                console.log('cpu', { message: snapshot });
-                socket.emit('cpu', { message: snapshot })
-            });
+            cpuSnapshot((snapshot)=>socket.emit('cpu', { message: snapshot }));
         }, config.interval)
     }); 
 
