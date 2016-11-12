@@ -6,7 +6,7 @@ const defaultConfig = {
     interval: 3000
 }
 
-const VisualV8 = function(){
+const VisualV8 = function(config){
     var config = config || defaultConfig;
     if (instance == null)
         instance = new Run(config);

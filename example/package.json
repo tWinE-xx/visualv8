@@ -1,0 +1,14 @@
+{
+  "name": "visualv8-example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "visualv8": "latest"
+  },
+  "author": "Yuval Birenboum <bir.yuval@gmail.com> (https://il.linkedin.com/in/yuval-birenboum-b3565b12)",
+  "license": "MIT"
+}
