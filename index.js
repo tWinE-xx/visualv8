@@ -14,15 +14,24 @@ const VisualV8 = function(config){
 }
 
 function Run(config){
-    var app = require('express')();  
-    var server = require('http').Server(app);  
+    var server = require('http').createServer(handleRequest.bind(this));
+    //var server = require('http').Server(app);  
     var io = require('socket.io')(server);
 
-    app.get('/', function(req, res) {  
-        res.sendFile(__dirname + '/index.html');
-    });
+    function handleRequest(request, response){
+        require('fs').readFile(__dirname+'\\index.html', 'utf8', function (err, data) {
+            if (err) {
+                return response.end('could not read file index.html __dirname:'+__dirname+', err:'+err);
+            }
+            response.statusCode = 200;
+            response.setHeader('Content-Type', 'text/html');
+            response.end(data);
+        });
+    }
 
-    server.listen(config.port, config.host); 
+    server.listen(config.port, config.host, ()=>{
+        console.log("Server listening on: http://%s:%s", config.host, config.port);
+    }); 
 
     io.on('connection', function(socket) {  
         socket.emit('onConnect', { message: `connected http://${config.host}:${config.port}` });

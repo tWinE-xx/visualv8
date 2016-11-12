@@ -1,1 +1,1 @@
-const visualV8 = require('visualv8')();
+const visualV8 = require('../index.js')();
