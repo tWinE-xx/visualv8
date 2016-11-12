@@ -1,0 +1,1 @@
+const visualV8 = require('../index.js')();

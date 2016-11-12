@@ -1,0 +1,95 @@
+<html>
+    <head>
+        <!-- http://www.chartjs.org/ -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.3.0/Chart.bundle.js"></script>
+    </head>
+    <body>
+        <h1>visualv8</h1>
+
+        <div style="width:500px;">
+            <canvas id="memoryChart" width="400" height="200"></canvas>
+            <hr/>
+            <canvas id="cpuChart" width="400" height="200"></canvas>
+        </div>
+
+        <script src="/socket.io/socket.io.js"></script>  
+        <script>  
+            var socket = io.connect('/');
+            socket.on('onConnect', function(data) {
+                console.log('server:', data.message);
+            });
+            socket.on('cpu', function(data) {
+                console.log('upc', data);
+                updateCpuChart(cpuChart, data.message);
+            });
+            socket.on('memory', function(data) {
+                console.log('memory', data);
+                updateMemoryChart(memoryChart, data.message);
+            });
+
+            function updateCpuChart(chart, data){
+                chart.data.datasets[0].data.push(data);
+                chart.update();
+            }
+
+            function updateMemoryChart(chart, data){
+                chart.data.datasets[0].data.push({x:data.time, y:data.rss});//rss
+                chart.data.datasets[1].data.push({x:data.time, y:data.heapTotal});//heapTotal
+                chart.data.datasets[2].data.push({x:data.time, y:data.heapUsed});//heapUsed
+                chart.update();
+            }
+
+            var ctxMemoryChart = document.getElementById("memoryChart");
+            var memoryChart = new Chart(ctxMemoryChart, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'rss',
+                            data: []
+                        }, {
+                            label: 'heapTotal',
+                            data: []
+                        }, {
+                            label: 'heapUsed',
+                            data: []
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            xAxes: [{
+                                display: false,
+                                type: 'linear',
+                                position: 'bottom'
+                            }]
+                        }
+                    }
+                });
+
+            var ctxCpuChart = document.getElementById("cpuChart");
+            var cpuChart = new Chart(ctxCpuChart, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'CPU % Usage',
+                            data: []
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            xAxes: [{
+                                display: false,
+                                type: 'linear',
+                                position: 'bottom'
+                            }],
+                            yAxes: [{
+                                ticks: {
+                                    beginAtZero:true,
+                                    max: 100
+                                }
+                            }]
+                        }
+                    }
+                });           
+        </script>  
+    </body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "name": "visualv8",
+  "version": "0.0.1",
+  "description": "visual UI for node.js memory and CPU usage, just like visualVM for java virtual machine",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tWinE-xx/visualv8.git"
+  },
+  "keywords": [
+    "heap",
+    "stack",
+    "memory",
+    "cpu",
+    "usage",
+    "performance",
+    "node.js"
+  ],
+  "author": "Yuval Birenboum <bir.yuval@gmail.com> (https://il.linkedin.com/in/yuval-birenboum-b3565b12)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tWinE-xx/visualv8/issues"
+  },
+  "homepage": "https://github.com/tWinE-xx/visualv8#readme",
+  "dependencies": {
+    "express": "^4.14.0",
+    "socket.io": "^1.5.1"
+  }
+}
