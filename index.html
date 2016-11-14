@@ -6,7 +6,7 @@
     <body>
         <h1>visualv8</h1>
 
-        <div style="width:500px;">
+        <div style="width:100%;">
             <canvas id="memoryChart" width="400" height="200"></canvas>
             <hr/>
             <canvas id="cpuChart" width="400" height="200"></canvas>
@@ -27,15 +27,31 @@
                 updateMemoryChart(memoryChart, data.message);
             });
 
+            var maxShownDots = -1;
+
             function updateCpuChart(chart, data){
-                chart.data.datasets[0].data.push(data);
+                if (maxShownDots < 0 || chart.data.datasets[0].data.length<maxShownDots)
+                    chart.data.datasets[0].data.push(data);
+                else{
+                    chart.data.datasets[0].data = chart.data.datasets[0].data.splice(1,chart.data.datasets[0].data.length-1);
+                    chart.data.datasets[0].data.push(data);                                
+                } 
                 chart.update();
             }
 
             function updateMemoryChart(chart, data){
-                chart.data.datasets[0].data.push({x:data.time, y:data.rss});//rss
-                chart.data.datasets[1].data.push({x:data.time, y:data.heapTotal});//heapTotal
-                chart.data.datasets[2].data.push({x:data.time, y:data.heapUsed});//heapUsed
+                if (maxShownDots < 0 || chart.data.datasets[0].data.length<maxShownDots){
+                    chart.data.datasets[0].data.push({x:data.time, y:data.rss});//rss
+                    chart.data.datasets[1].data.push({x:data.time, y:data.heapTotal});//heapTotal
+                    chart.data.datasets[2].data.push({x:data.time, y:data.heapUsed});//heapUsed
+                } else {
+                    chart.data.datasets[0].data = chart.data.datasets[0].data.splice(1,chart.data.datasets[0].data.length-1);
+                    chart.data.datasets[1].data = chart.data.datasets[1].data.splice(1,chart.data.datasets[1].data.length-1);
+                    chart.data.datasets[2].data = chart.data.datasets[2].data.splice(1,chart.data.datasets[2].data.length-1);
+                    chart.data.datasets[0].data.push({x:data.time, y:data.rss});//rss
+                    chart.data.datasets[1].data.push({x:data.time, y:data.heapTotal});//heapTotal
+                    chart.data.datasets[2].data.push({x:data.time, y:data.heapUsed});//heapUsed
+                }
                 chart.update();
             }
 
@@ -60,6 +76,11 @@
                                 display: false,
                                 type: 'linear',
                                 position: 'bottom'
+                            }],
+                            yAxes: [{
+                                ticks: {
+                                    beginAtZero:true
+                                }
                             }]
                         }
                     }

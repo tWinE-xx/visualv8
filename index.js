@@ -1,4 +1,6 @@
-var instance = null;
+var instance = null,
+    usageInterval = null,
+    cpuTimout = null;
 
 const defaultConfig = {
     host: 'localhost',
@@ -33,11 +35,15 @@ function Run(config){
         console.log("Server listening on: http://%s:%s", config.host, config.port);
     }); 
 
+    io.on('end', function (){
+        clearInterval(usageInterval);
+    });
+
     io.on('connection', function(socket) {  
         socket.emit('onConnect', { message: `connected http://${config.host}:${config.port}` });
-        setInterval(()=>{
+        usageInterval = setInterval(()=>{
             socket.emit('memory', { message: memorySnapshot.call() });
-            cpuSnapshot((snapshot)=>socket.emit('cpu', { message: snapshot }));
+            cpuSnapshot(config.interval, (snapshot)=>socket.emit('cpu', { message: snapshot }));
         }, config.interval)
     }); 
 
@@ -47,13 +53,19 @@ function Run(config){
         return snapshot;
     }
 
-    function cpuSnapshot(cb){
+    function cpuSnapshot(interval, cb){
+        if (interval <= 1500)
+            interval = interval/2;
+        else
+            interval = 1000;
+
         const os = require('os');
         const NUMBER_OF_CPUS = os.cpus().length;
         var startTime  = process.hrtime()
         var startUsage = process.cpuUsage()
 
-        setTimeout(() => {
+        clearTimeout(cpuTimout);
+        cpuTimout = setTimeout(() => {
             // spin the CPU for 500 milliseconds
             var now = Date.now()
             while (Date.now() - now < 500);
@@ -75,7 +87,7 @@ function Run(config){
             snapshot.y = parseInt(cpuPercent);
             snapshot.x = new Date().getTime();
             cb(snapshot);                
-        }, 1000);
+        }, interval);
 
         function hrtimeToMS (hrtime) {
             return hrtime[0] * 1000 + hrtime[1] / 1000000
