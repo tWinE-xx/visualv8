@@ -1,5 +1,6 @@
 var instance = null,
     usageInterval = null,
+    profilerMemoryDiffInterval = null,
     cpuTimout = null;
 
 const defaultConfig = {
@@ -16,8 +17,9 @@ const VisualV8 = function(config){
 }
 
 function Run(config){
+    var profiler = require('v8-profiler');
+    var fs = require('fs');
     var server = require('http').createServer(handleRequest.bind(this));
-    //var server = require('http').Server(app);  
     var io = require('socket.io')(server);
 
     function handleRequest(request, response){
@@ -37,15 +39,44 @@ function Run(config){
 
     io.on('end', function (){
         clearInterval(usageInterval);
+        clearInterval(profilerMemoryDiffInterval);
     });
 
     io.on('connection', function(socket) {  
+        //
         socket.emit('onConnect', { message: `connected http://${config.host}:${config.port}` });
+        //
         usageInterval = setInterval(()=>{
             socket.emit('memory', { message: memorySnapshot.call() });
-            cpuSnapshot(config.interval, (snapshot)=>socket.emit('cpu', { message: snapshot }));
-        }, config.interval)
-    }); 
+            cpuSnapshot(config.interval, (snapshot)=>socket.emit('cpu', { message: snapshot }));            
+        }, config.interval);
+
+        var snapshot1 = profiler.takeSnapshot()
+            snapshot2 = null, 
+            diff = null;
+        socket.on('snapshot-diff', function(message) {
+            snapshot2 = profiler.takeSnapshot();
+            diff = snapshot1.compare(snapshot2);
+            snapshot1 = snapshot2;
+            snapshot2.delete();
+            snapshot2 = null;
+            socket.emit('snapshot-diff-result', { message: diff });
+            diff = null;
+        });
+
+        socket.on('snapshot-to-file', function(message) {  
+        });
+
+        socket.on('gc', function(message) { 
+            if (global.gc) {
+                global.gc();
+                socket.emit('gc-result', { message: 'GC collect completed' });
+            } else {
+                socket.emit('gc-result', { message: 'Garbage collection unavailable.  Pass --expose-gc when launching node to enable forced garbage collection.' });
+            }
+        });
+        
+    });
 
     function memorySnapshot(){
         var snapshot = process.memoryUsage();
@@ -92,8 +123,38 @@ function Run(config){
         function hrtimeToMS (hrtime) {
             return hrtime[0] * 1000 + hrtime[1] / 1000000
         }
-
     }
+
+    /*
+    setInterval(()=>{
+        var snapshot1 = profiler.takeSnapshot();
+        // Export snapshot to file file
+        snapshot1.export(function(error, result) {
+            fs.writeFileSync('snapshot-'+new Date().getMinutes()+'-'+new Date().getSeconds()+'.heapsnapshot', result);
+            snapshot1.delete();
+        });
+    }, 5000);
+    */
+
+    
 }
+
+/*
+var theThing = null;
+var replaceThing = function () {
+  var originalThing = theThing;
+  var unused = function () {
+    if (originalThing)
+      console.log("hi");
+  };
+  theThing = {
+    longStr: new Array(1000000).join('*'),
+    someMethod: function () {
+      console.log(someMessage);
+    }
+  };
+};
+setInterval(replaceThing, 1000);
+*/
 
 module.exports = VisualV8;

@@ -7,6 +7,13 @@
         <h1>visualv8</h1>
 
         <div style="width:100%;">
+            <div id="messagesDiv" style="background: yellow"></div>
+            <div>
+                <button id="memoryDiffButton" onclick="memoryDiffButtonClick()">Memory diff</button>
+                <button id="gcButton" onclick="gcButtonClick()">Run GC cycle</button>
+            <div>
+            <div id="memoryDiffDiv"></div>
+            <hr/>
             <canvas id="memoryChart" width="400" height="200"></canvas>
             <hr/>
             <canvas id="cpuChart" width="400" height="200"></canvas>
@@ -15,16 +22,50 @@
         <script src="/socket.io/socket.io.js"></script>  
         <script>  
             var socket = io.connect('/');
+
+            function report(message, cleanAfter){
+                var timeout = null;
+                document.getElementById('messagesDiv').innerHTML = message;
+                if (cleanAfter){
+                    timeout = setTimeout(function(){
+                        document.getElementById('messagesDiv').innerHTML = '';
+                    }, cleanAfter);
+                }
+            }
+
+            function memoryDiffButtonClick(){
+                socket.emit('snapshot-diff');
+            }
+
+            function gcButtonClick(){
+                socket.emit('gc');
+                report('calling GC collect, please wait..');
+            }
+            socket.on('gc-result', function(data) {
+                report(data.message, 5000);
+            });
+
             socket.on('onConnect', function(data) {
                 console.log('server:', data.message);
             });
             socket.on('cpu', function(data) {
-                console.log('upc', data);
+                //console.log('upc', data);
                 updateCpuChart(cpuChart, data.message);
             });
             socket.on('memory', function(data) {
-                console.log('memory', data);
+                //console.log('memory', data);
                 updateMemoryChart(memoryChart, data.message);
+            });
+            socket.on('snapshot-diff-result', function(data) {
+                //console.log('memory', data);
+                document.getElementById('memoryDiffDiv')
+                    .innerHTML = 
+                        '<ul>\
+                            <li>String: '+data.message.String+'</li>\
+                            <li>Array: '+data.message.Array+'</li>\
+                            <li>Object: '+data.message.Object+'</li>\
+                            <li>Timeout: '+data.message.Timeout+'</li>\
+                        </ul>';
             });
 
             var maxShownDots = -1;
