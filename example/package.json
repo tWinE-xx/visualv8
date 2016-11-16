@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "start-debug": "node --debug --trace_gc --expose-gc index.js",
     "start": "node --expose-gc index.js"
   },
   "dependencies": {

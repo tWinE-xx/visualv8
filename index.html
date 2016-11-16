@@ -1,40 +1,97 @@
 <html>
     <head>
-        <!-- http://www.chartjs.org/ -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.3.0/Chart.bundle.js"></script>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+        <style>
+            body {
+                padding-top: 50px;
+            }
+            .starter-template {
+                padding: 40px 15px;
+                text-align: center;
+            }
+        </style>
     </head>
     <body>
-        <h1>visualv8</h1>
+        <nav class="navbar navbar-inverse navbar-fixed-top">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="#">VisualV8</a>
+                </div>
+                <div id="navbar" class="collapse navbar-collapse">
+                <ul class="nav navbar-nav">
+                    <li><a href="#" onclick="show('memory')">Memory</a></li>
+                    <li><a href="#" onclick="show('cpu')">CPU</a></li>
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Operations <span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="#" onclick="memoryDiffButtonClick()">Heap snapshot</a></li>
+                            <li role="separator" class="divider"></li>
+                            <li><a href="#" onclick="gcButtonClick()">Run GC cycle</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                </div><!--/.nav-collapse -->
+            </div>
+        </nav>
+        <div class="container">
 
-        <div style="width:100%;">
-            <div id="messagesDiv" style="background: yellow"></div>
-            <div>
-                <button id="memoryDiffButton" onclick="memoryDiffButtonClick()">Memory diff</button>
-                <button id="gcButton" onclick="gcButtonClick()">Run GC cycle</button>
-            <div>
-            <div id="memoryDiffDiv"></div>
-            <hr/>
-            <canvas id="memoryChart" width="400" height="200"></canvas>
-            <hr/>
-            <canvas id="cpuChart" width="400" height="200"></canvas>
-        </div>
+            <div class="alert alert-success" role="alert" id="messagesDiv" style="display:none;"></div>
 
-        <script src="/socket.io/socket.io.js"></script>  
+            <div class="starter-template" id="memoryDiv" style="display: block;">
+                <h3>Heap State</h3>
+                <canvas id="memoryChart" width="400" height="200"></canvas>
+                <br/><br/>
+                <h3>Heap Space Statistics</h3>
+                <canvas id="memoryDetailsChart" width="400" height="200"></canvas>
+            </div>  
+
+            <div class="starter-template" id="cpuDiv" style="display: none;">
+                <canvas id="cpuChart" width="400" height="200"></canvas>
+            </div>
+
+        </div><!-- /.container -->
+        
+        
+        <script src="/socket.io/socket.io.js"></script>
+        <!-- http://www.chartjs.org/ -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.3.0/Chart.bundle.js"></script>  
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
         <script>  
             var socket = io.connect('/');
 
+            function show(what){
+                switch (what){
+                    case 'memory':
+                        document.getElementById('memoryDiv').style = 'display: block;';
+                        document.getElementById('cpuDiv').style = 'display:none;';
+                        break;
+                    case 'cpu':
+                        document.getElementById('memoryDiv').style = 'display:none;';
+                        document.getElementById('cpuDiv').style = 'display: block;';
+                        break;
+                }
+            }
+
             function report(message, cleanAfter){
                 var timeout = null;
+                document.getElementById('messagesDiv').style = 'display:block;';
                 document.getElementById('messagesDiv').innerHTML = message;
                 if (cleanAfter){
                     timeout = setTimeout(function(){
-                        document.getElementById('messagesDiv').innerHTML = '';
+                        document.getElementById('messagesDiv').style = 'display:none;';
                     }, cleanAfter);
                 }
             }
 
             function memoryDiffButtonClick(){
-                socket.emit('snapshot-diff');
+                socket.emit('heap-snapshot');
             }
 
             function gcButtonClick(){
@@ -55,17 +112,10 @@
             socket.on('memory', function(data) {
                 //console.log('memory', data);
                 updateMemoryChart(memoryChart, data.message);
+                updateMemoryDetailsChart(memoryDetailsChart, data.message);
             });
-            socket.on('snapshot-diff-result', function(data) {
-                //console.log('memory', data);
-                document.getElementById('memoryDiffDiv')
-                    .innerHTML = 
-                        '<ul>\
-                            <li>String: '+data.message.String+'</li>\
-                            <li>Array: '+data.message.Array+'</li>\
-                            <li>Object: '+data.message.Object+'</li>\
-                            <li>Timeout: '+data.message.Timeout+'</li>\
-                        </ul>';
+            socket.on('heap-snapshot-result', function(data) {
+                download(data.message, 'Heap-'+new Date().getTime()+'.heapsnapshot', 'heapsnapshot');
             });
 
             var maxShownDots = -1;
@@ -82,16 +132,40 @@
 
             function updateMemoryChart(chart, data){
                 if (maxShownDots < 0 || chart.data.datasets[0].data.length<maxShownDots){
-                    chart.data.datasets[0].data.push({x:data.time, y:data.rss});//rss
-                    chart.data.datasets[1].data.push({x:data.time, y:data.heapTotal});//heapTotal
-                    chart.data.datasets[2].data.push({x:data.time, y:data.heapUsed});//heapUsed
+                    chart.data.datasets[0].data.push({x:data.time, y:data.rss/1000000});//rss
+                    chart.data.datasets[1].data.push({x:data.time, y:data.heapTotal/1000000});//heapTotal
+                    chart.data.datasets[2].data.push({x:data.time, y:data.heapUsed/1000000});//heapUsed
                 } else {
                     chart.data.datasets[0].data = chart.data.datasets[0].data.splice(1,chart.data.datasets[0].data.length-1);
                     chart.data.datasets[1].data = chart.data.datasets[1].data.splice(1,chart.data.datasets[1].data.length-1);
                     chart.data.datasets[2].data = chart.data.datasets[2].data.splice(1,chart.data.datasets[2].data.length-1);
-                    chart.data.datasets[0].data.push({x:data.time, y:data.rss});//rss
-                    chart.data.datasets[1].data.push({x:data.time, y:data.heapTotal});//heapTotal
-                    chart.data.datasets[2].data.push({x:data.time, y:data.heapUsed});//heapUsed
+
+                    chart.data.datasets[0].data.push({x:data.time, y:data.rss/1000000});//rss
+                    chart.data.datasets[1].data.push({x:data.time, y:data.heapTotal/1000000});//heapTotal
+                    chart.data.datasets[2].data.push({x:data.time, y:data.heapUsed/1000000});//heapUsed
+                }
+                chart.update();
+            }
+
+             function updateMemoryDetailsChart(chart, data){
+                if (maxShownDots < 0 || chart.data.datasets[0].data.length<maxShownDots){
+                    chart.data.datasets[0].data.push({x:data.time, y:data.heapSpaceStatistics[0].space_used_size/1000000});//new_space
+                    chart.data.datasets[1].data.push({x:data.time, y:data.heapSpaceStatistics[1].space_used_size/1000000});//old_space
+                    chart.data.datasets[2].data.push({x:data.time, y:data.heapSpaceStatistics[2].space_used_size/1000000});//code_space
+                    chart.data.datasets[3].data.push({x:data.time, y:data.heapSpaceStatistics[3].space_used_size/1000000});//map_space
+                    chart.data.datasets[4].data.push({x:data.time, y:data.heapSpaceStatistics[4].space_used_size/1000000});//"large_object_space"
+                } else {
+                    chart.data.datasets[0].data = chart.data.datasets[0].data.splice(1,chart.data.datasets[0].data.length-1);
+                    chart.data.datasets[1].data = chart.data.datasets[1].data.splice(1,chart.data.datasets[1].data.length-1);
+                    chart.data.datasets[2].data = chart.data.datasets[2].data.splice(1,chart.data.datasets[2].data.length-1);
+                    chart.data.datasets[3].data = chart.data.datasets[3].data.splice(1,chart.data.datasets[3].data.length-1);
+                    chart.data.datasets[4].data = chart.data.datasets[4].data.splice(1,chart.data.datasets[4].data.length-1);
+
+                    chart.data.datasets[0].data.push({x:data.time, y:data.heapSpaceStatistics[0].space_used_size/1000000});//new_space
+                    chart.data.datasets[1].data.push({x:data.time, y:data.heapSpaceStatistics[1].space_used_size/1000000});//old_space
+                    chart.data.datasets[2].data.push({x:data.time, y:data.heapSpaceStatistics[2].space_used_size/1000000});//code_space
+                    chart.data.datasets[3].data.push({x:data.time, y:data.heapSpaceStatistics[3].space_used_size/1000000});//map_space
+                    chart.data.datasets[4].data.push({x:data.time, y:data.heapSpaceStatistics[4].space_used_size/1000000});//large_object_space
                 }
                 chart.update();
             }
@@ -104,10 +178,10 @@
                             label: 'rss',
                             data: []
                         }, {
-                            label: 'heapTotal',
+                            label: 'heap total',
                             data: []
                         }, {
-                            label: 'heapUsed',
+                            label: 'heap used',
                             data: []
                         }]
                     },
@@ -116,7 +190,44 @@
                             xAxes: [{
                                 display: false,
                                 type: 'linear',
-                                position: 'bottom'
+                                position: 'bottom',
+                            }],
+                            yAxes: [{
+                                ticks: {
+                                    beginAtZero:true
+                                }
+                            }]
+                        }
+                    }
+                });
+
+             var ctxMemoryDetailsChart = document.getElementById("memoryDetailsChart");
+            var memoryDetailsChart = new Chart(ctxMemoryDetailsChart, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'new space used',
+                            data: []
+                        }, {
+                            label: 'old space used',
+                            data: []
+                        }, {
+                            label: 'code space used',
+                            data: []
+                        }, {
+                            label: 'map space used',
+                            data: []
+                        }, {
+                            label: 'large object space',
+                            data: []
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            xAxes: [{
+                                display: false,
+                                type: 'linear',
+                                position: 'bottom',
                             }],
                             yAxes: [{
                                 ticks: {
@@ -151,7 +262,25 @@
                             }]
                         }
                     }
-                });           
+                });
+
+            function download(data, filename, type) {
+                var a = document.createElement("a"),
+                    file = new Blob([data], {type: type});
+                if (window.navigator.msSaveOrOpenBlob) // IE10+
+                    window.navigator.msSaveOrOpenBlob(file, filename);
+                else { // Others
+                    var url = URL.createObjectURL(file);
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(function() {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);  
+                    }, 0); 
+                }
+            }           
         </script>  
     </body>
 </html>
