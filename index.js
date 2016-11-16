@@ -17,7 +17,7 @@ const VisualV8 = function(config){
 
 function Run(config){
     const v8 = require('v8');
-    const os  = require('os-utils');
+    const os  = require('os');
     var profiler = require('v8-profiler');
     var fs = require('fs');
     var server = require('http').createServer(handleRequest.bind(this));
@@ -48,7 +48,7 @@ function Run(config){
         //
         usageInterval = setInterval(()=>{
             socket.emit('memory', { message: memorySnapshot.call() });
-            cpuSnapshot(config.interval, (snapshot)=>socket.emit('cpu', { message: snapshot }));            
+            cpuSnapshot((snapshot)=>socket.emit('cpu', { message: snapshot }));            
         }, config.interval);
 
         socket.on('heap-snapshot', function(message) {  
@@ -58,6 +58,17 @@ function Run(config){
                 socket.emit('heap-snapshot-result', { message: result });
                 snapshot1.delete();
                 snapshot1 = null;
+            });
+        });
+
+        socket.on('cpu-snapshot', function(message) {  
+            profiler.startProfiling('1', true);
+            var profile1 = profiler.stopProfiling();
+            // Export snapshot to file file
+            profile1.export(function(error, result) {
+                socket.emit('cpu-snapshot-result', { message: result });
+                profile1.delete();
+                profile1 = null;
             });
         });
 
@@ -79,14 +90,40 @@ function Run(config){
         return snapshot;
     }
 
-    function cpuSnapshot(interval, cb){
-        os.cpuUsage((vsnapshot)=>{
-            var snapshot = {};
-            snapshot.y = vsnapshot;
-            snapshot.x = new Date().getTime();
-            cb(snapshot);  
+    function cpuSnapshot(cb){
+        calcCpuUsage((vsnapshot)=>{
+            return cb({
+                usage: vsnapshot,
+                time: new Date().getTime()
+            });
         });
     };
+    
+    function calcCpuUsage(cb){
+        
+        var cpu = os.cpus();
+
+        var counter = 0;
+        var total=0;
+
+        var free=0;
+        var sys=0;
+        var user=0;
+
+        for (var i = 0; i<cpu.length ; i++) {
+            counter++;
+            total=parseFloat(cpu[i].times.idle)+parseFloat(cpu[i].times.sys)+parseFloat(cpu[i].times.user)+parseFloat(cpu[i].times.irq)+parseFloat(cpu[i].times.nice);
+            free+=100*(parseFloat(cpu[i].times.idle)/total);
+            sys+=100*(parseFloat(cpu[i].times.sys)/total);
+            user+=100*(parseFloat(cpu[i].times.user)/total);
+        };
+        return cb({
+            cpuCount: i,
+            free: (free/counter),
+            user: (user/counter),
+            system: (sys/counter)
+        });
+    }
 }
 
 module.exports = VisualV8;

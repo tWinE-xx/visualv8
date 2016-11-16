@@ -1,6 +1,6 @@
 {
   "name": "visualv8",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "visual UI for node.js memory and CPU usage, just like visualVM for java virtual machine",
   "main": "index.js",
   "scripts": {

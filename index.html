@@ -30,7 +30,9 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Operations <span class="caret"></span></a>
                         <ul class="dropdown-menu">
-                            <li><a href="#" onclick="memoryDiffButtonClick()">Heap snapshot</a></li>
+                            <li><a href="#" onclick="memoryProfileButtonClick()">Heap snapshot</a></li>
+                            <li role="separator" class="divider"></li>
+                            <li><a href="#" onclick="cpuProfileButtonClick()">CPU snapshot</a></li>                            
                             <li role="separator" class="divider"></li>
                             <li><a href="#" onclick="gcButtonClick()">Run GC cycle</a></li>
                         </ul>
@@ -90,8 +92,12 @@
                 }
             }
 
-            function memoryDiffButtonClick(){
+            function memoryProfileButtonClick(){
                 socket.emit('heap-snapshot');
+            }
+
+            function cpuProfileButtonClick(){
+                socket.emit('cpu-snapshot');
             }
 
             function gcButtonClick(){
@@ -114,18 +120,30 @@
                 updateMemoryChart(memoryChart, data.message);
                 updateMemoryDetailsChart(memoryDetailsChart, data.message);
             });
+
             socket.on('heap-snapshot-result', function(data) {
                 download(data.message, 'Heap-'+new Date().getTime()+'.heapsnapshot', 'heapsnapshot');
+            });
+
+            socket.on('cpu-snapshot-result', function(data) {
+                download(data.message, 'CPU-'+new Date().getTime()+'.cpuprofile', 'cpuprofile');
             });
 
             var maxShownDots = -1;
 
             function updateCpuChart(chart, data){
-                if (maxShownDots < 0 || chart.data.datasets[0].data.length<maxShownDots)
-                    chart.data.datasets[0].data.push(data);
-                else{
+                if (maxShownDots < 0 || chart.data.datasets[0].data.length<maxShownDots){
+                    chart.data.datasets[0].data.push({x:data.time, y:data.usage.free});
+                    chart.data.datasets[1].data.push({x:data.time, y:data.usage.user});
+                    chart.data.datasets[2].data.push({x:data.time, y:data.usage.system});
+                } else{
                     chart.data.datasets[0].data = chart.data.datasets[0].data.splice(1,chart.data.datasets[0].data.length-1);
-                    chart.data.datasets[0].data.push(data);                                
+                    chart.data.datasets[1].data = chart.data.datasets[1].data.splice(1,chart.data.datasets[1].data.length-1);
+                    chart.data.datasets[2].data = chart.data.datasets[2].data.splice(1,chart.data.datasets[2].data.length-1);
+
+                    chart.data.datasets[0].data.push({x:data.time, y:data.usage.free});
+                    chart.data.datasets[1].data.push({x:data.time, y:data.usage.user});
+                    chart.data.datasets[2].data.push({x:data.time, y:data.usage.system});                             
                 } 
                 chart.update();
             }
@@ -243,7 +261,13 @@
                     type: 'line',
                     data: {
                         datasets: [{
-                            label: 'CPU % Usage',
+                            label: 'Free CPU %',
+                            data: []
+                        }, {
+                            label: 'User CPU %',
+                            data: []
+                        }, {
+                            label: 'System CPU %',
                             data: []
                         }]
                     },
