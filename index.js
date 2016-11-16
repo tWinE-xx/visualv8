@@ -35,7 +35,7 @@ function Run(config){
     }
 
     server.listen(config.port, config.host, ()=>{
-        console.log("Server listening on: http://%s:%s", config.host, config.port);
+        console.log("VisualV8 UI: http://%s:%s", config.host, config.port);
     }); 
 
     io.on('end', function (){
@@ -91,38 +91,30 @@ function Run(config){
     }
 
     function cpuSnapshot(cb){
-        calcCpuUsage((vsnapshot)=>{
+        startMeasure = cpuAverage();
+        setTimeout(function() { 
+            var endMeasure = cpuAverage(); 
+            var idleDifference = endMeasure.idle - startMeasure.idle;
+            var totalDifference = endMeasure.total - startMeasure.total;
+            var percentageCPU = 100 - ~~(100 * idleDifference / totalDifference);
             return cb({
-                usage: vsnapshot,
-                time: new Date().getTime()
+                y: percentageCPU,
+                x: new Date().getTime()
             });
-        });
+        }, 1000);
     };
     
-    function calcCpuUsage(cb){
-        
-        var cpu = os.cpus();
-
-        var counter = 0;
-        var total=0;
-
-        var free=0;
-        var sys=0;
-        var user=0;
-
-        for (var i = 0; i<cpu.length ; i++) {
-            counter++;
-            total=parseFloat(cpu[i].times.idle)+parseFloat(cpu[i].times.sys)+parseFloat(cpu[i].times.user)+parseFloat(cpu[i].times.irq)+parseFloat(cpu[i].times.nice);
-            free+=100*(parseFloat(cpu[i].times.idle)/total);
-            sys+=100*(parseFloat(cpu[i].times.sys)/total);
-            user+=100*(parseFloat(cpu[i].times.user)/total);
-        };
-        return cb({
-            cpuCount: i,
-            free: (free/counter),
-            user: (user/counter),
-            system: (sys/counter)
-        });
+    function cpuAverage(){
+        var totalIdle = 0, totalTick = 0;
+        var cpus = os.cpus();
+        for(var i = 0, len = cpus.length; i < len; i++) {
+            var cpu = cpus[i];
+            for(type in cpu.times) {
+                totalTick += cpu.times[type];
+            }     
+            totalIdle += cpu.times.idle;
+        }
+        return {idle: totalIdle / cpus.length,  total: totalTick / cpus.length};
     }
 }
 

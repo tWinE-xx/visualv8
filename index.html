@@ -132,18 +132,11 @@
             var maxShownDots = -1;
 
             function updateCpuChart(chart, data){
-                if (maxShownDots < 0 || chart.data.datasets[0].data.length<maxShownDots){
-                    chart.data.datasets[0].data.push({x:data.time, y:data.usage.free});
-                    chart.data.datasets[1].data.push({x:data.time, y:data.usage.user});
-                    chart.data.datasets[2].data.push({x:data.time, y:data.usage.system});
-                } else{
+                if (maxShownDots < 0 || chart.data.datasets[0].data.length<maxShownDots)
+                    chart.data.datasets[0].data.push(data);
+                else{
                     chart.data.datasets[0].data = chart.data.datasets[0].data.splice(1,chart.data.datasets[0].data.length-1);
-                    chart.data.datasets[1].data = chart.data.datasets[1].data.splice(1,chart.data.datasets[1].data.length-1);
-                    chart.data.datasets[2].data = chart.data.datasets[2].data.splice(1,chart.data.datasets[2].data.length-1);
-
-                    chart.data.datasets[0].data.push({x:data.time, y:data.usage.free});
-                    chart.data.datasets[1].data.push({x:data.time, y:data.usage.user});
-                    chart.data.datasets[2].data.push({x:data.time, y:data.usage.system});                             
+                    chart.data.datasets[0].data.push(data);                                
                 } 
                 chart.update();
             }
@@ -261,13 +254,7 @@
                     type: 'line',
                     data: {
                         datasets: [{
-                            label: 'Free CPU %',
-                            data: []
-                        }, {
-                            label: 'User CPU %',
-                            data: []
-                        }, {
-                            label: 'System CPU %',
+                            label: 'Machine CPU usage (%)',
                             data: []
                         }]
                     },
