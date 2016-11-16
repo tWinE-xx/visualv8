@@ -25,13 +25,13 @@ Then access [http://localhost:1919](http://localhost:1919)
 just add the module to your code base and the UI will be by default on : http://localhost:1919
 
  ```js
-const visualV8 = require('../index.js')();
+const visualV8 = require('visualv8')();
 ```
 
 to configure host and port your self:
 
  ```js
-const visualV8 = require('../index.js')({
+const visualV8 = require('visualv8')({
     host: 'localhost',
     port: 8081,
     interval: 6000//the time to push usage data to client
