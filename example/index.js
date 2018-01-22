@@ -4,9 +4,8 @@ const visualV8 = require('../index.js')({
     interval: 3000
 });
 
-/* 
-this causes memory leaks
-*/
+// This causes memory leaks
+
 /*
 var theThing = null;
 var replaceThing = function () {
