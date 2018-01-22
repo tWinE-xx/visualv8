@@ -107,7 +107,7 @@ function Run(config) {
         let totalIdle = 0;
         let totalTick = 0;
 
-        for (const i = 0, len = cpus.length; i < len; i++) {
+        for (let i = 0, len = cpus.length; i < len; i++) {
             const cpu = cpus[i];
             for (let type in cpu.times) {
                 totalTick += cpu.times[type];
